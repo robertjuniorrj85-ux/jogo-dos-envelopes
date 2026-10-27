@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#17162f">
+<title>JOGO DOS ENVELOPES</title>
+<style>
+  :root {
+    --bg: #111126;
+    --panel: rgba(255,255,255,.08);
+    --line: rgba(255,255,255,.13);
+    --text: #f7f5ff;
+    --muted: #b8b6d3;
+    --purple: #9a78ff;
+    --pink: #ff77b7;
+    --green: #27c98a;
+    --red: #ff5d76;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background:
+      radial-gradient(ellipse at 12% 8%, rgba(154,120,255,.24), transparent 38%),
+      radial-gradient(ellipse at 90% 25%, rgba(255,119,183,.15), transparent 35%),
+      linear-gradient(145deg, #111126, #1b1940 60%, #13132d);
+    padding: 24px 16px 40px;
+  }
+  button { font: inherit; }
+  .app { max-width: 1120px; margin: 0 auto; }
+  header { text-align: center; margin: 10px auto 25px; }
+  .eyebrow { color: #c7b8ff; font-size: .78rem; letter-spacing: .22em; font-weight: 800; text-transform: uppercase; }
+  h1 { margin: 8px 0 9px; font-size: clamp(2rem, 6vw, 3.5rem); letter-spacing: -.045em; line-height: 1.05; }
+  h1 span { background: linear-gradient(90deg, #b7a2ff, #ff9bc9); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .subtitle { color: var(--muted); margin: 0 auto; max-width: 540px; line-height: 1.55; }
+  .stats { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 24px 0 22px; }
+  .stat { min-width: 120px; padding: 12px 18px; border: 1px solid var(--line); background: var(--panel); border-radius: 16px; backdrop-filter: blur(12px); }
+  .stat strong { display: block; font-size: 1.4rem; }
+  .stat span { color: var(--muted); font-size: .8rem; }
+  .progress-wrap { max-width: 500px; margin: 0 auto 27px; }
+  .progress-label { display: flex; justify-content: space-between; color: var(--muted); font-size: .8rem; margin-bottom: 8px; }
+  .progress { height: 8px; background: rgba(255,255,255,.1); border-radius: 20px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--purple), var(--pink)); border-radius: inherit; transition: width .35s ease; }
+  .axis {display:grid;place-items:center;font-weight:900;color:#e7d7ff;font-size:clamp(.9rem,2.4vw,1.5rem);text-shadow:0 2px 10px #0006;} .board { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 16px; }
+  .envelope {
+    position: relative; border: 1px solid rgba(255,255,255,.17); border-radius: 17px;
+    min-height: 100px; padding: 8px; cursor: pointer; color: white; overflow: hidden;
+    background: linear-gradient(145deg, rgba(255,255,255,.12), rgba(255,255,255,.035));
+    box-shadow: 0 10px 25px rgba(0,0,0,.16); transition: transform .22s ease, border-color .22s ease, background .22s ease;
+    isolation: isolate;
+  }
+  .envelope:hover:not(:disabled) { transform: translateY(-5px) scale(1.015); border-color: rgba(183,162,255,.8); background: linear-gradient(145deg, rgba(154,120,255,.24), rgba(255,255,255,.05)); }
+  .envelope:focus-visible, .answer:focus-visible, .primary:focus-visible, .secondary:focus-visible { outline: 3px solid #ffd4ed; outline-offset: 3px; }
+  .env-art { position: relative; width: 60px; height: 43px; margin: 4px auto 10px; border-radius: 6px; background: linear-gradient(145deg,#d9ceff,#a88bff); box-shadow: 0 5px 14px rgba(0,0,0,.2); }
+  .env-art::before { content:""; position:absolute; inset:0; background: linear-gradient(145deg, transparent 49%, #b19af9 50%) left bottom/50% 100% no-repeat, linear-gradient(215deg, transparent 49%, #c4b4ff 50%) right bottom/50% 100% no-repeat; border-radius: 0 0 6px 6px; }
+  .env-art::after { content:""; position:absolute; left:0; right:0; top:0; margin:auto; width:0; height:0; border-left:30px solid transparent; border-right:30px solid transparent; border-top:24px solid #f0ebff; transform-origin: top; transition: transform .4s ease; filter: drop-shadow(0 2px 1px rgba(0,0,0,.1)); }
+  .env-number { position: absolute; top: 9px; left: 11px; color: rgba(255,255,255,.75); font-size: .76rem; font-weight: 800; }
+  .env-caption { display: block; font-weight: 750; font-size: .9rem; }
+  .env-status { display: block; color: #c6c1e2; font-size: .72rem; margin-top: 3px; }
+  .envelope.done { cursor: default; background: rgba(39,201,138,.1); border-color: rgba(39,201,138,.38); }
+  .envelope.done .env-art { background: linear-gradient(145deg,#b4f4db,#32bd91); }
+  .envelope.done .env-art::before { background: linear-gradient(145deg, transparent 49%, #48c99e 50%) left bottom/50% 100% no-repeat, linear-gradient(215deg, transparent 49%, #77dfba 50%) right bottom/50% 100% no-repeat; }
+  .envelope.done .env-art::after { border-top-color: #d8fff0; }
+  .envelope.done .env-status { color: #79e6bc; }
+  .envelope:disabled { opacity: 1; }
+  .hidden { display: none !important; }
+  .screen { animation: fadeUp .35s ease both; }
+  .quiz-layout { max-width: 720px; margin: 0 auto; }
+  .back-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; color: var(--muted); font-size: .88rem; }
+  .letter {
+    position: relative; padding: clamp(22px, 5vw, 38px); color: #272344;
+    background: #fffdf8; border-radius: 6px 6px 18px 18px; box-shadow: 0 22px 60px rgba(0,0,0,.28);
+    transform-origin: top center; animation: letterOpen .5s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .letter::before { content:""; position:absolute; top:0; left:0; right:0; height:8px; background: linear-gradient(90deg,#9a78ff,#ff77b7); border-radius: 6px 6px 0 0; }
+  .letter-tag { color: #7e64d5; text-transform: uppercase; letter-spacing: .16em; font-size: .72rem; font-weight: 850; margin: 4px 0 13px; }
+  .letter h2 { font-size: clamp(1.25rem, 4vw, 1.75rem); line-height: 1.35; margin: 0; }
+  .letter-hint { color: #77718d; font-size: .88rem; margin: 13px 0 0; }
+  .answers { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 11px; margin: 16px 0; }
+  .answer { display: flex; align-items: center; gap: 12px; text-align: left; padding: 14px; min-height: 64px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.07); color: var(--text); cursor: pointer; transition: transform .16s, border-color .16s, background .16s; }
+  .answer:hover:not(:disabled) { transform: translateY(-2px); border-color: #b7a2ff; background: rgba(154,120,255,.15); }
+  .letter-key { display: grid; place-items: center; flex: 0 0 32px; width:32px; height:32px; border-radius: 10px; color: #e2d8ff; background: rgba(154,120,255,.2); font-weight: 850; }
+  .answer.correct { border-color: var(--green); background: rgba(39,201,138,.18); }
+  .answer.correct .letter-key { background: var(--green); color: #092c20; }
+  .answer.wrong { border-color: var(--red); background: rgba(255,93,118,.18); }
+  .answer.wrong .letter-key { background: var(--red); color: #3a0d17; }
+  .answer:disabled { cursor: default; }
+  .feedback { border-radius: 13px; padding: 14px 16px; margin: 8px 0 15px; font-weight: 750; line-height: 1.5; }
+  .feedback.good { color: #8ff0c9; background: rgba(39,201,138,.13); border: 1px solid rgba(39,201,138,.28); }
+  .feedback.bad { color: #ffadba; background: rgba(255,93,118,.13); border: 1px solid rgba(255,93,118,.28); }
+  .primary, .secondary { border: 0; border-radius: 13px; padding: 13px 19px; cursor: pointer; font-weight: 800; transition: transform .18s, filter .18s; }
+  .primary { color: #201738; background: linear-gradient(100deg,#c1b0ff,#ffacd2); box-shadow: 0 8px 22px rgba(154,120,255,.18); }
+  .secondary { color: var(--text); background: rgba(255,255,255,.09); border: 1px solid var(--line); }
+  .primary:hover, .secondary:hover { transform: translateY(-2px); filter: brightness(1.06); }
+  .actions { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
+  .result-card { text-align:center; padding: clamp(25px, 6vw, 48px); border:1px solid var(--line); background:rgba(255,255,255,.07); border-radius:24px; }
+  .trophy { font-size: 3rem; margin-bottom: 8px; }
+  .result-card h2 { font-size: clamp(1.8rem,5vw,2.6rem); margin: 8px 0; }
+  .final-score { font-size: clamp(2.8rem,9vw,4.5rem); font-weight: 900; background:linear-gradient(90deg,#b7a2ff,#ff9bc9); color:transparent; -webkit-background-clip:text; background-clip:text; }
+  .result-card p { color:var(--muted); line-height:1.6; }
+  footer { text-align:center; color: #8885ad; font-size:.78rem; margin-top:30px; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes letterOpen { from { opacity:0; transform:perspective(700px) rotateX(-14deg) translateY(18px) scale(.97); } to { opacity:1; transform:perspective(700px) rotateX(0) translateY(0) scale(1); } }
+  @media (max-width: 650px) {
+    body { padding: 18px 12px 28px; }
+    .board { grid-template-columns: repeat(7,minmax(0,1fr)); gap:10px; }
+    .envelope { min-height: 72px; padding: 5px 2px; border-radius: 14px; }
+    .env-art { transform: scale(.65); margin-top: 0; margin-bottom: 5px; }
+    .env-caption { font-size: .68rem; }
+    .env-status { font-size: .55rem; }
+    .stat { min-width: 98px; padding: 10px 13px; }
+    .answers { grid-template-columns: 1fr; gap: 9px; }
+    .answer { min-height: 57px; padding: 11px; }
+  }
+  @media (max-width: 360px) { .board { grid-template-columns: repeat(7,minmax(0,1fr)); } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+.draw-area{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:12px;margin:0 0 24px;text-align:center}.draw-area #drawResult{color:#e5d8ff;font-weight:800;min-width:210px}.axis.corner{opacity:.3}.envelope.selected{outline:3px solid #ffd46c;outline-offset:2px}.envelope.done.wrong-done{background:rgba(255,93,118,.1);border-color:rgba(255,93,118,.4)}.envelope.done.wrong-done .env-status{color:#ffb3c1}@media(max-width:650px){.board{gap:4px}.env-caption{font-size:.62rem}.env-status{display:none}.env-number{font-size:.6rem;top:3px;left:5px}.axis{font-size:1rem}.draw-area{gap:8px}}
+  .reset-area{text-align:center;margin:20px 0 6px}.reset-button{background:#123a40d9;color:#e2f8f0;border:1px solid #a1d8c47a;border-radius:12px;padding:11px 20px;cursor:pointer;font-weight:700}.reset-button:hover{background:#20555a}.credits{padding:22px 16px!important;border:1px solid #8bcbb34d;border-radius:18px!important}.credits-label{font-size:.7rem;letter-spacing:.16em;font-weight:800;color:#9edac8}.credits-topic{font-weight:650;font-size:clamp(.8rem,1.8vw,1rem);margin:9px auto 15px;color:#f4fff8}.credits-topic span,.credits-names span{color:#e8c977;margin:0 5px}.credits-line{height:1px;background:#92cdb14d;max-width:540px;margin:0 auto 14px}.credits-names{font-weight:800;font-size:clamp(.95rem,2vw,1.2rem);margin-top:8px;color:#fff}.credits-class{font-size:.82rem;color:#c1e7d8;margin-top:6px}
+</style>
+<style>
+:root{--purple:#25d6a0;--pink:#f6c55d;--green:#34db9a;--muted:#c4e6dd;--line:rgba(198,255,229,.23)}
+body{background:linear-gradient(180deg,rgba(2,21,34,.76),rgba(2,24,35,.86)),url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNjAwIDkwMCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJza3kiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agc3RvcC1jb2xvcj0iIzA3MmU0MCIvPjxzdG9wIG9mZnNldD0iLjU1IiBzdG9wLWNvbG9yPSIjMTM3MzZiIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMjM0YjQ1Ii8+PC9saW5lYXJHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9ImhpbGwiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agc3RvcC1jb2xvcj0iIzJlYWM3ZCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzA3NTM0NSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxwYXRoIGZpbGw9InVybCgjc2t5KSIgZD0iTTAgMGgxNjAwdjkwMEgweiIvPjxjaXJjbGUgY3g9IjEyNTAiIGN5PSIxNDUiIHI9IjEwNSIgZmlsbD0iI2Y5ZGI4MyIgb3BhY2l0eT0iLjUiLz48cGF0aCBmaWxsPSIjMTc2MzVkIiBkPSJNMCA0OTBRMjYwIDM0MCA1MTAgNTAwVDEwNTAgNDcwVDE2MDAgNDIwVjkwMEgwWiIvPjxwYXRoIGZpbGw9InVybCgjaGlsbCkiIGQ9Ik0wIDY4MFEzMDAgNTIwIDY4MCA2OTBUMTYwMCA1OTBWOTAwSDBaIi8+PGcgZmlsbD0iIzE0M2I0NiIgc3Ryb2tlPSIjNjhjNmE5IiBzdHJva2Utd2lkdGg9IjMiPjxwYXRoIGQ9Ik04MCA1MzBoMTAwVjMzMEg4MHpNMjEwIDUzMGgxMTBWMzgwSDIxMHpNMzQwIDUzMGgxMzBWMjkwSDM0MHoiLz48cGF0aCBkPSJNNTAgNTMwVjQyMGw5MC02NSA5MCA2NSA3MC01NSAxMDAgNzV2OTB6Ii8+PC9nPjxnIGZpbGw9IiNiYWRiZDAiIG9wYWNpdHk9Ii40Ij48ZWxsaXBzZSBjeD0iMTEwIiBjeT0iMjY1IiByeD0iOTAiIHJ5PSIyOCIvPjxlbGxpcHNlIGN4PSIzODUiIGN5PSIyMDAiIHJ4PSIxMjUiIHJ5PSIzMiIvPjwvZz48ZyBzdHJva2U9IiNkNGZmZjAiIHN0cm9rZS13aWR0aD0iOSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48cGF0aCBkPSJNMTEyMCA2NTBWMjc1TTEzNzAgNjIwVjIwME05ODAgNjMwVjM2NSIvPjwvZz48ZyBmaWxsPSIjZTZmZmYyIiBzdHJva2U9IiNhN2VhZDgiIHN0cm9rZS13aWR0aD0iMyI+PHBhdGggZD0iTTExMjAgMjc1bC0xOC0xODUgMzUgMTY1IDE0MCAxMjAtMTYwLTc5LTEzNSAxMTB6TTEzNzAgMjAwbC0yNS0xNTUgNDAgMTQwIDEzNSA5OC0xNTAtNjEtMTIyIDkxek05ODAgMzY1bC0xNS0xMjAgMzAgMTEwIDkwIDc1LTEwNS00OC05NSA3NXoiLz48L2c+PGcgZmlsbD0iIzE1M2Y1NSIgc3Ryb2tlPSIjODVlOGNlIiBzdHJva2Utd2lkdGg9IjQiPjxwYXRoIGQ9Ik03MjAgNjgwbDkwLTE0NWgyNjBsLTYwIDE0NXpNMTA3MCA3MzBsNjUtMTIwaDI0MGwtNDUgMTIweiIvPjwvZz48ZyBzdHJva2U9IiM3ZmRiYzUiIHN0cm9rZS13aWR0aD0iMyI+PHBhdGggZD0iTTc0MCA2MzBoMjkwTTc3MCA1ODBoMjgwTTgwMCA1NDBsODAgMTQwTTkwMCA1NDBsNjAgMTQwTTExNTAgNjcwaDIxME0xMTgwIDYxNWw3NSAxMTVNMTI3MCA2MTVsNDUgMTE1Ii8+PC9nPjxnIGZpbGw9IiMwYzY5NGIiPjxjaXJjbGUgY3g9IjUyMCIgY3k9IjYyNSIgcj0iOTAiLz48Y2lyY2xlIGN4PSI2MTAiIGN5PSI2NzAiIHI9Ijc1Ii8+PGNpcmNsZSBjeD0iMTQ4MCIgY3k9IjYyNSIgcj0iMTA1Ii8+PGNpcmNsZSBjeD0iMTU2MCIgY3k9IjY3NSIgcj0iOTAiLz48L2c+PC9zdmc+") center center / cover fixed;color:#f1fff9}
+.app{max-width:1120px}header{margin-bottom:16px}h1 span{background:linear-gradient(90deg,#6af2bb,#f9db80);background-clip:text;-webkit-background-clip:text}.eyebrow{color:#a9f4d9}.stat{background:rgba(4,42,52,.8)}.board{grid-template-columns:38px repeat(6,minmax(0,1fr));gap:clamp(5px,1.2vw,12px);padding:clamp(10px,2vw,22px);background:rgba(4,32,42,.86);border:2px solid rgba(123,234,188,.35);border-radius:24px;box-shadow:0 22px 80px #001e27a6}.axis{color:#fce4a1;font-size:clamp(1rem,2.5vw,1.5rem)}.envelope{min-height:clamp(80px,10vw,119px);border-color:#9ad9bd55;background:linear-gradient(145deg,#1b796b,#10504f);padding:9px 4px}.envelope:hover:not(:disabled){background:linear-gradient(145deg,#239985,#176760);border-color:#fce4a1}.env-art{width:clamp(38px,6vw,70px);height:clamp(27px,4.3vw,49px);background:linear-gradient(145deg,#fbe3a3,#caa75b);margin:3px auto 6px}.env-art::after{border-left-width:clamp(19px,3vw,35px);border-right-width:clamp(19px,3vw,35px);border-top-width:clamp(16px,2.5vw,26px);border-top-color:#fff0c8}.env-caption{font-size:clamp(.76rem,1.5vw,1rem)}.env-number{display:none}.env-status{font-size:.7rem}.envelope.selected{outline:3px solid #ffe38d;box-shadow:0 0 24px #ffdc6599}.primary{background:linear-gradient(100deg,#68e7ad,#f8d781);color:#0c3935}.secondary{background:#0d514e}.letter{background:#fffdf1}.letter::before{background:linear-gradient(90deg,#19a87c,#f4cc64)}.letter-tag{color:#187e67}.progress-fill{background:linear-gradient(90deg,#39d9a0,#f6d576)}footer{color:#d4f5e8;background:#092f38cc;border-radius:12px;padding:12px}.draw-area{background:#07343ecc;border:1px solid #7dd9b45c;padding:15px;border-radius:17px}.quiz-layout{background:#052c37c9;border-radius:22px;padding:clamp(12px,3vw,24px)}
+.draw-modal{position:fixed;inset:0;background:#021a25dd;z-index:100;display:grid;place-items:center;padding:16px;backdrop-filter:blur(8px)}.draw-card{width:min(540px,100%);background:linear-gradient(160deg,#126a66,#063b49);border:2px solid #8ce9c0;border-radius:26px;padding:clamp(22px,5vw,42px);text-align:center;box-shadow:0 25px 90px #000a}.draw-card h2{margin:0 0 8px;font-size:clamp(1.5rem,5vw,2.4rem)}.draw-card p{color:#c4e6dd}.draw-digits{display:flex;justify-content:center;align-items:center;gap:14px;margin:28px 0}.draw-digit{display:grid;place-items:center;width:clamp(95px,25vw,150px);height:clamp(110px,29vw,170px);border-radius:20px;background:#e8fff2;color:#07564e;font-weight:900;font-size:clamp(4rem,15vw,7rem);box-shadow:inset 0 -10px 0 #9bd9b7,0 8px 25px #0006;font-variant-numeric:tabular-nums}.draw-digit.stopped{background:#fce4a1;color:#4d4a1d}.draw-card .primary{min-width:160px}.draw-card button:disabled{opacity:.5;cursor:default}@media(max-width:650px){.board{grid-template-columns:23px repeat(6,minmax(0,1fr));gap:4px;padding:7px;border-radius:14px}.envelope{min-height:75px;border-radius:8px}.env-art{transform:none}.env-caption{font-size:.73rem}.axis{font-size:1rem}.stats{margin:14px 0}.subtitle{font-size:.88rem}}
+</style></head>
+<body>
+<div id="drawModal" class="draw-modal hidden" role="dialog" aria-modal="true" aria-label="Sorteio de envelope"><div class="draw-card"><h2>🎲 SORTEIO SURPRESA</h2><p id="drawMessage">Preparando o sorteio...</p><div class="draw-digits"><div class="draw-digit" id="rollingLetter">A</div><div class="draw-digit" id="rollingNumber">1</div></div><button id="drawModalOpen" class="primary hidden" type="button">Abrir envelope</button> <button id="drawModalClose" class="secondary hidden" type="button">Voltar ao quadro</button></div></div><div class="app">
+  <header>
+    <div class="eyebrow">Desafio de sustentabilidade</div>
+    <h1>JOGO DOS <span>ENVELOPES</span></h1>
+    <p class="subtitle">Escolha uma letra de A a F e um número de 1 a 6, ou sorteie um envelope. Responda às questões sobre energia, ecologia e indústria.</p>
+    <div class="stats" aria-label="Estatísticas do jogo">
+      <div class="stat"><strong id="score">0</strong><span>Acertos</span></div>
+      <div class="stat"><strong id="completed">0/36</strong><span>Envelopes concluídos</span></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Seu progresso</span><span id="progressText">0 de 36</span></div>
+      <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+  </header>
+
+  <main>
+    <section id="boardScreen" class="screen" aria-label="Quadro de envelopes">
+      <div class="draw-area"><button class="primary" id="drawButton" type="button">🎲 Sortear envelope</button><div id="drawResult" role="status" aria-live="polite">Escolha no quadro ou faça um sorteio!</div><button class="secondary hidden" id="openDrawButton" type="button">✉ Abrir sorteado</button></div><div class="board" id="board"></div><div class="reset-area"><button class="reset-button" id="resetGameButton" type="button">↻ Reiniciar jogo</button></div>
+    </section>
+
+    <section id="quizScreen" class="screen hidden" aria-live="polite">
+      <div class="quiz-layout">
+        <div class="back-top"><span id="questionNumber">ENVELOPE 01</span><span>Escolha uma alternativa</span></div>
+        <article class="letter">
+          <div class="letter-tag">✦ Sua carta surpresa</div>
+          <h2 id="questionText"></h2>
+          <p class="letter-hint">Leia com atenção e marque apenas uma resposta.</p>
+        </article>
+        <div class="answers" id="answers"></div>
+        <div id="feedback" class="feedback hidden" role="status"></div>
+        <div class="actions"><button class="primary hidden" id="backButton" type="button">← Voltar ao quadro</button></div>
+      </div>
+    </section>
+
+    <section id="resultScreen" class="screen hidden" aria-live="polite">
+      <div class="result-card">
+        <div class="trophy">🏆</div>
+        <div class="eyebrow">Desafio concluído</div>
+        <h2>Você abriu todos os envelopes!</h2>
+        <div class="final-score"><span id="finalScore">0</span>/36</div>
+        <p id="resultMessage"></p>
+        <div class="actions"><button class="primary" id="restartButton" type="button">↻ Jogar novamente</button></div>
+      </div>
+    </section>
+  </main>
+  <footer class="credits"><div class="credits-label">PROJETO EDUCACIONAL INTERATIVO</div><div class="credits-topic">Matrizes Energéticas <span>•</span> Transição Ecológica <span>•</span> Impacto Ambiental da Indústria</div><div class="credits-line"></div><div class="credits-label">DESENVOLVIDO POR</div><div class="credits-names">Júlia Raquel <span>·</span> João Vitor <span>·</span> Rafael</div><div class="credits-class">Turma EMIEM2AM</div></footer>
+</div>
+
+<script>
+/*
+  COMO EDITAR AS PERGUNTAS:
+  - Cada item representa um envelope.
+  - "options" deve ter exatamente quatro alternativas.
+  - "answer" é o índice da resposta correta: 0 = A, 1 = B, 2 = C, 3 = D.
+*/
+const questions = [
+  {
+    "question": "Qual fonte de energia é renovável?",
+    "options": [
+      "Carvão mineral",
+      "Petróleo",
+      "Energia solar",
+      "Gás natural"
+    ],
+    "answer": 2
+  },
+  {
+    "question": "Qual é a principal fonte da matriz elétrica brasileira?",
+    "options": [
+      "Hidrelétrica",
+      "Nuclear",
+      "Carvão",
+      "Diesel"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "O que é matriz energética?",
+    "options": [
+      "Apenas eletricidade",
+      "Conjunto das fontes de energia utilizadas",
+      "Somente combustíveis fósseis",
+      "Um tipo de usina"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "Qual combustível fóssil é usado em veículos?",
+    "options": [
+      "Etanol",
+      "Biodiesel",
+      "Gasolina",
+      "Hidrogênio verde"
+    ],
+    "answer": 2
+  },
+  {
+    "question": "A energia eólica aproveita qual recurso?",
+    "options": [
+      "Calor interno da Terra",
+      "Ventos",
+      "Marés",
+      "Luz solar"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "O que painéis fotovoltaicos produzem?",
+    "options": [
+      "Eletricidade a partir da luz",
+      "Gasolina",
+      "Vapor de carvão",
+      "Gás natural"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "Qual fonte é considerada não renovável?",
+    "options": [
+      "Biomassa",
+      "Energia solar",
+      "Petróleo",
+      "Energia eólica"
+    ],
+    "answer": 2
+  },
+  {
+    "question": "O que é biomassa energética?",
+    "options": [
+      "Material orgânico usado para produzir energia",
+      "Minério radioativo",
+      "Vento armazenado",
+      "Água do mar congelada"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "Qual é uma vantagem da energia solar?",
+    "options": [
+      "Emite fumaça na geração",
+      "Usa uma fonte renovável",
+      "Depende de carvão",
+      "Produz resíduos radioativos na operação"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "Qual impacto pode estar associado a grandes hidrelétricas?",
+    "options": [
+      "Desaparecimento das chuvas",
+      "Alagamento de áreas e alteração de ecossistemas",
+      "Criação de petróleo",
+      "Aumento obrigatório da salinidade dos oceanos"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "O que é energia geotérmica?",
+    "options": [
+      "Energia do calor interno da Terra",
+      "Energia das ondas de rádio",
+      "Energia do petróleo",
+      "Energia dos ventos"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "Qual fonte costuma gerar eletricidade com queima de combustível?",
+    "options": [
+      "Solar fotovoltaica",
+      "Eólica",
+      "Termelétrica a carvão",
+      "Hidrelétrica"
+    ],
+    "answer": 2
+  },
+  {
+    "question": "O que significa transição energética?",
+    "options": [
+      "Trocar fontes poluentes por alternativas mais limpas e eficientes",
+      "Parar toda produção industrial",
+      "Usar somente gasolina",
+      "Aumentar o desperdício"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "Qual gás está fortemente associado ao aquecimento global?",
+    "options": [
+      "Oxigênio",
+      "Dióxido de carbono",
+      "Hélio",
+      "Neônio"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "O que significa descarbonizar a economia?",
+    "options": [
+      "Reduzir emissões de gases de efeito estufa",
+      "Eliminar toda eletricidade",
+      "Aumentar uso de carvão",
+      "Proibir reciclagem"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "Qual medida ajuda na eficiência energética?",
+    "options": [
+      "Deixar luzes acesas",
+      "Usar equipamentos eficientes",
+      "Desperdiçar calor",
+      "Manter vazamentos de ar"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "O que é economia circular?",
+    "options": [
+      "Descartar após um uso",
+      "Reutilizar, reparar e reciclar materiais",
+      "Extrair recursos sem limites",
+      "Queimar todo resíduo"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "Qual transporte tende a emitir menos por passageiro em trajetos urbanos?",
+    "options": [
+      "Carro com um ocupante",
+      "Ônibus lotado",
+      "Moto com motor desregulado",
+      "Caminhonete vazia"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "O que é hidrogênio verde?",
+    "options": [
+      "Hidrogênio feito de carvão sem controle de emissões",
+      "Hidrogênio produzido com eletricidade renovável na eletrólise",
+      "Gasolina colorida",
+      "Gás retirado de árvores"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "Qual ação contribui para a transição ecológica?",
+    "options": [
+      "Expandir desperdício",
+      "Recuperar áreas degradadas",
+      "Descartar lixo em rios",
+      "Aumentar desmatamento"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "Qual é um objetivo do Acordo de Paris?",
+    "options": [
+      "Elevar emissões globais",
+      "Conter o aumento da temperatura global",
+      "Eliminar fontes renováveis",
+      "Incentivar desmatamento"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "O que é pegada de carbono?",
+    "options": [
+      "Quantidade de água consumida",
+      "Estimativa de emissões de gases de efeito estufa associadas a uma atividade",
+      "Peso dos resíduos sólidos",
+      "Área de uma floresta"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "Qual prática doméstica reduz consumo de energia?",
+    "options": [
+      "Usar lâmpadas LED eficientes",
+      "Abrir geladeira continuamente",
+      "Deixar aparelhos ligados sem necessidade",
+      "Usar lâmpadas incandescentes"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "Qual medida protege a biodiversidade?",
+    "options": [
+      "Destruir habitats",
+      "Criar e conservar áreas protegidas",
+      "Poluir nascentes",
+      "Introduzir espécies invasoras"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "O que é efluente industrial?",
+    "options": [
+      "Água ou líquido residual de processo industrial",
+      "Energia solar captada",
+      "Vento de turbina",
+      "Minério puro"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "Qual problema pode surgir de efluentes sem tratamento?",
+    "options": [
+      "Melhoria automática da água",
+      "Contaminação de rios e solos",
+      "Redução de toda poluição",
+      "Aumento da água potável"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "O que são emissões atmosféricas industriais?",
+    "options": [
+      "Substâncias liberadas no ar por atividades industriais",
+      "Apenas resíduos sólidos",
+      "Água de chuva",
+      "Luz refletida"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "Qual ação reduz resíduos na indústria?",
+    "options": [
+      "Produção sem planejamento",
+      "Reaproveitar materiais no processo",
+      "Misturar todos os resíduos perigosos",
+      "Descartar em terrenos"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "O que é logística reversa?",
+    "options": [
+      "Devolver produtos e embalagens para reaproveitamento ou destinação adequada",
+      "Transportar resíduos para rios",
+      "Comprar sem embalagem",
+      "Aumentar consumo de combustíveis"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "Por que tratar gases de chaminés industriais?",
+    "options": [
+      "Para aumentar fumaça",
+      "Para reduzir a liberação de poluentes",
+      "Para eliminar necessidade de manutenção",
+      "Para aquecer o planeta"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "Qual atividade industrial pode contribuir para chuva ácida?",
+    "options": [
+      "Emissão de óxidos de enxofre e nitrogênio",
+      "Instalação de placas solares",
+      "Coleta seletiva",
+      "Reflorestamento"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "O que é avaliação de impacto ambiental?",
+    "options": [
+      "Análise de possíveis efeitos de um empreendimento no ambiente",
+      "Somente cálculo do lucro",
+      "Inspeção de uniformes",
+      "Campanha de publicidade"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "Qual é um exemplo de poluição do solo?",
+    "options": [
+      "Descarte inadequado de resíduos químicos",
+      "Reciclagem correta",
+      "Tratamento de esgoto",
+      "Plantio de árvores"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "Como uma indústria pode economizar água?",
+    "options": [
+      "Reutilizando água quando tecnicamente adequado",
+      "Mantendo vazamentos",
+      "Lavando pisos continuamente",
+      "Descartando água limpa"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "O que é desenvolvimento sustentável?",
+    "options": [
+      "Atender necessidades atuais sem comprometer as futuras gerações",
+      "Consumir todos os recursos rapidamente",
+      "Produzir sem controle ambiental",
+      "Ignorar questões sociais"
+    ],
+    "answer": 0
+  },
+  {
+    "question": "Qual indicador ajuda a acompanhar impacto ambiental industrial?",
+    "options": [
+      "Volume de emissões de gases de efeito estufa",
+      "Cor do uniforme",
+      "Número de mesas do escritório",
+      "Tamanho do logotipo"
+    ],
+    "answer": 0
+  }
+];
+
+const board = document.getElementById("board");
+const boardScreen = document.getElementById("boardScreen");
+const quizScreen = document.getElementById("quizScreen");
+const resultScreen = document.getElementById("resultScreen");
+const scoreEl = document.getElementById("score");
+const completedEl = document.getElementById("completed");
+const progressText = document.getElementById("progressText");
+const progressFill = document.getElementById("progressFill");
+const questionNumber = document.getElementById("questionNumber");
+const questionText = document.getElementById("questionText");
+const answersEl = document.getElementById("answers");
+const feedback = document.getElementById("feedback");
+const backButton = document.getElementById("backButton");
+
+const STORAGE_KEY = "jogo_envelopes_energia_v2";
+function loadProgress(){try{const v=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");if(v&&Array.isArray(v.completed))return v;}catch(e){}return null;}
+function saveProgress(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({completed:[...completed],missed:[...missed],correctCount}));}catch(e){}}
+const savedProgress=loadProgress();
+let completed = new Set(savedProgress?.completed?.filter(i=>Number.isInteger(i)&&i>=0&&i<questions.length)||[]);
+let missed = new Set(savedProgress?.missed?.filter(i=>completed.has(i))||[]);
+let drawnIndex = null;
+let correctCount = savedProgress ? completed.size-missed.size : 0;
+let currentIndex = null;
+let answeredThisTurn = false;
+
+function codeFor(index) {return `${"ABCDEF"[Math.floor(index/6)]}${index%6+1}`;}
+function renderBoard() {
+  board.innerHTML = "";
+  const corner = document.createElement("div");corner.className="axis corner";corner.textContent="✦";board.appendChild(corner);
+  for(let n=1;n<=6;n++){const cell=document.createElement("div");cell.className="axis";cell.textContent=n;board.appendChild(cell);}
+  for(let row=0;row<6;row++){
+    const axis=document.createElement("div");axis.className="axis";axis.textContent="ABCDEF"[row];board.appendChild(axis);
+    for(let col=0;col<6;col++){
+      const index=row*6+col;const isDone=completed.has(index);
+      const button=document.createElement("button");button.type="button";
+      button.className="envelope"+(isDone?" done":"")+(missed.has(index)?" wrong-done":"")+(drawnIndex===index?" selected":"");
+      button.disabled=isDone;
+      button.setAttribute("aria-label",`Envelope ${codeFor(index)}${isDone?", concluído":", fechado"}`);
+      button.innerHTML=`<span class="env-number">${codeFor(index)}</span><div class="env-art" aria-hidden="true"></div><span class="env-caption">${codeFor(index)}</span><span class="env-status">${isDone?(missed.has(index)?"✗ Errou":"✓ Acertou"):"✦ Abrir"}</span>`;
+      if(!isDone)button.addEventListener("click",()=>openEnvelope(index));
+      board.appendChild(button);
+    }
+  }
+  updateStats();
+}
+const drawButton=document.getElementById("drawButton");
+const drawResult=document.getElementById("drawResult");
+const openDrawButton=document.getElementById("openDrawButton");
+const drawModal=document.getElementById("drawModal");
+const rollingLetter=document.getElementById("rollingLetter");
+const rollingNumber=document.getElementById("rollingNumber");
+const drawMessage=document.getElementById("drawMessage");
+const drawModalOpen=document.getElementById("drawModalOpen");
+const drawModalClose=document.getElementById("drawModalClose");
+let drawing=false;
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+drawButton.addEventListener("click",async()=>{
+ if(drawing)return;
+ const available=questions.map((_,i)=>i).filter(i=>!completed.has(i));
+ if(!available.length){drawResult.textContent="Todos os envelopes foram respondidos!";return;}
+ drawing=true;drawButton.disabled=true;
+ drawnIndex=available[Math.floor(Math.random()*available.length)];
+ drawModal.classList.remove("hidden");drawModalOpen.classList.add("hidden");drawModalClose.classList.add("hidden");
+ rollingLetter.classList.remove("stopped");rollingNumber.classList.remove("stopped");
+ drawMessage.textContent="Qual letra será sorteada?";
+ const target=codeFor(drawnIndex);
+ for(let i=0;i<30;i++){rollingLetter.textContent="ABCDEF"[Math.floor(Math.random()*6)];rollingNumber.textContent=1+Math.floor(Math.random()*6);await sleep(45+i*4);}
+ rollingLetter.textContent=target[0];rollingLetter.classList.add("stopped");drawMessage.textContent="A letra foi escolhida! E o número?";
+ for(let i=0;i<20;i++){rollingNumber.textContent=1+Math.floor(Math.random()*6);await sleep(65+i*12);}
+ rollingNumber.textContent=target[1];rollingNumber.classList.add("stopped");
+ drawMessage.textContent=`🎉 Envelope ${target} sorteado!`;
+ drawResult.textContent=`🎉 Sorteado: ${target}`;
+ openDrawButton.classList.remove("hidden");openDrawButton.textContent=`✉ Abrir ${target}`;
+ drawModalOpen.textContent=`✉ Abrir ${target}`;drawModalOpen.classList.remove("hidden");drawModalClose.classList.remove("hidden");
+ renderBoard();drawing=false;drawButton.disabled=false;
+});
+drawModalOpen.addEventListener("click",()=>{drawModal.classList.add("hidden");if(drawnIndex!==null&&!completed.has(drawnIndex))openEnvelope(drawnIndex);});
+drawModalClose.addEventListener("click",()=>drawModal.classList.add("hidden"));
+openDrawButton.addEventListener("click",()=>{if(drawnIndex!==null&&!completed.has(drawnIndex))openEnvelope(drawnIndex);});
+
+function updateStats() {
+  scoreEl.textContent = correctCount;
+  completedEl.textContent = `${completed.size}/${questions.length}`;
+  progressText.textContent = `${completed.size} de ${questions.length}`;
+  progressFill.style.width = `${(completed.size / questions.length) * 100}%`;
+}
+
+function showScreen(screen) {
+  [boardScreen, quizScreen, resultScreen].forEach(el => el.classList.add("hidden"));
+  screen.classList.remove("hidden");
+}
+
+function openEnvelope(index) {
+  if (completed.has(index)) return;
+  currentIndex = index;
+  answeredThisTurn = false;
+  const item = questions[index];
+  questionNumber.textContent = `ENVELOPE ${codeFor(index)}`;
+  questionText.textContent = item.question;
+  feedback.className = "feedback hidden";
+  feedback.textContent = "";
+  backButton.classList.add("hidden");
+  answersEl.innerHTML = "";
+  item.options.forEach((option, optionIndex) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "answer";
+    button.innerHTML = `<span class="letter-key">${"ABCD"[optionIndex]}</span><span></span>`;
+    button.querySelector("span:last-child").textContent = option;
+    button.addEventListener("click", () => answerQuestion(optionIndex));
+    answersEl.appendChild(button);
+  });
+  showScreen(quizScreen);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function answerQuestion(selectedIndex) {
+  if (answeredThisTurn || currentIndex === null) return;
+  answeredThisTurn = true;
+  const item = questions[currentIndex];
+  const buttons = [...answersEl.querySelectorAll(".answer")];
+  buttons.forEach((button, index) => {
+    button.disabled = true;
+    if (index === item.answer) button.classList.add("correct");
+    if (index === selectedIndex && selectedIndex !== item.answer) button.classList.add("wrong");
+  });
+
+  if (selectedIndex === item.answer) {
+    correctCount++;
+    feedback.textContent = "🎉 Parabéns! Você acertou!";
+    feedback.className = "feedback good";
+  } else {
+    feedback.textContent = `Quase! A resposta correta é ${"ABCD"[item.answer]} — ${item.options[item.answer]}.`;
+    feedback.className = "feedback bad";
+  }
+
+  completed.add(currentIndex);
+   if(selectedIndex!==item.answer)missed.add(currentIndex);
+  saveProgress();
+   drawnIndex=null;openDrawButton.classList.add("hidden");drawResult.textContent="Escolha no quadro ou faça um sorteio!";
+  updateStats();
+  backButton.classList.remove("hidden");
+}
+
+backButton.addEventListener("click", () => {
+  if (completed.size === questions.length) {
+    showResults();
+  } else {
+    renderBoard();
+    showScreen(boardScreen);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+});
+
+function showResults() {
+  document.getElementById("finalScore").textContent = correctCount;
+  const percentage = correctCount / questions.length;
+  let message;
+  if (percentage === 1) message = "Incrível! Você acertou todas as perguntas. Conhecimento desbloqueado! ✨";
+  else if (percentage >= .75) message = "Mandou muito bem! Você conhece muito bem sustentabilidade e energia. 🌟";
+  else if (percentage >= .5) message = "Bom trabalho! Cada pergunta é uma oportunidade de aprender mais. 💜";
+  else message = "Desafio concluído! Continue explorando e tente novamente para melhorar sua pontuação. 🚀";
+  document.getElementById("resultMessage").textContent = message;
+  showScreen(resultScreen);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function resetGame(){
+  if(!window.confirm("Deseja reiniciar o jogo? Todas as respostas e a pontuação serão apagadas."))return;
+  completed=new Set();missed=new Set();correctCount=0;currentIndex=null;answeredThisTurn=false;drawnIndex=null;
+  try{localStorage.removeItem(STORAGE_KEY);}catch(e){}
+  drawResult.textContent="Escolha no quadro ou faça um sorteio!";
+  openDrawButton.classList.add("hidden");
+  renderBoard();showScreen(boardScreen);window.scrollTo({top:0,behavior:"smooth"});
+}
+document.getElementById("restartButton").addEventListener("click",resetGame);
+document.getElementById("resetGameButton").addEventListener("click",resetGame);
+
+renderBoard();
+</script>
+</body>
+</html>
