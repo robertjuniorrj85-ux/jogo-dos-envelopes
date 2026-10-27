@@ -657,6 +657,7 @@ function openEnvelope(index) {
   feedback.className = "feedback hidden";
   feedback.textContent = "";
   backButton.classList.add("hidden");
+  nextQuestionButton.classList.add("hidden");
   answersEl.innerHTML = "";
   item.options.forEach((option, optionIndex) => {
     const button = document.createElement("button");
