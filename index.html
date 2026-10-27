@@ -743,9 +743,22 @@ renderBoard();
 let deferredInstallPrompt=null;
 const installButton=document.getElementById("installGameButton");
 const installNote=document.getElementById("installNote");
-window.addEventListener("beforeinstallprompt",event=>{event.preventDefault();deferredInstallPrompt=event;installNote.textContent="Instalacao disponivel neste navegador.";});
-window.addEventListener("appinstalled",()=>{deferredInstallPrompt=null;installNote.textContent="Jogo instalado com sucesso!";});
+function isInstalledApp(){
+  return window.matchMedia("(display-mode: standalone)").matches ||
+         window.matchMedia("(display-mode: fullscreen)").matches ||
+         window.navigator.standalone===true;
+}
+function refreshInstallButton(){
+  if(isInstalledApp()){installButton.hidden=true;installButton.style.display="none";installNote.textContent="";}
+  else{installButton.hidden=false;installButton.style.display="";}
+}
+refreshInstallButton();
+window.matchMedia("(display-mode: standalone)").addEventListener?.("change",refreshInstallButton);
+window.addEventListener("pageshow",refreshInstallButton);
+window.addEventListener("beforeinstallprompt",event=>{event.preventDefault();deferredInstallPrompt=event;refreshInstallButton();if(!isInstalledApp())installNote.textContent="Instalacao disponivel neste navegador.";});
+window.addEventListener("appinstalled",()=>{deferredInstallPrompt=null;installButton.hidden=true;installButton.style.display="none";installNote.textContent="Jogo instalado com sucesso!";});
 installButton.addEventListener("click",async()=>{
+  if(isInstalledApp()){refreshInstallButton();return;}
   if(deferredInstallPrompt){const prompt=deferredInstallPrompt;deferredInstallPrompt=null;await prompt.prompt();const choice=await prompt.userChoice;installNote.textContent=choice.outcome==="accepted"?"Instalacao iniciada!":"Instalacao cancelada.";return;}
   const ios=/iPhone|iPad|iPod/.test(navigator.userAgent);
   installNote.textContent=ios?"No Safari, toque em Compartilhar e depois em Adicionar a Tela de Inicio.":"Abra o menu do navegador (⋮) e escolha Instalar aplicativo ou Adicionar a tela inicial.";
