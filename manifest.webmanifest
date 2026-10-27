@@ -1,6 +1,6 @@
 {
   "name": "Jogo dos Envelopes — Sustentabilidade e Energia",
-  "short_name": "Envelopes",
+  "short_name": "Jogo dos Envelopes",
   "description": "Jogo educativo com 36 envelopes sobre energia, ecologia e industria.",
   "start_url": "./",
   "scope": "./",
@@ -9,10 +9,10 @@
   "theme_color": "#126a66",
   "icons": [
     {
-      "src": "./icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "./icone_jogo_envelopes_512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
