@@ -125,6 +125,15 @@ body{background:linear-gradient(180deg,rgba(2,21,34,.76),rgba(2,24,35,.86)),url(
 .draw-modal{position:fixed;inset:0;background:#021a25dd;z-index:100;display:grid;place-items:center;padding:16px;backdrop-filter:blur(8px)}.draw-card{width:min(540px,100%);background:linear-gradient(160deg,#126a66,#063b49);border:2px solid #8ce9c0;border-radius:26px;padding:clamp(22px,5vw,42px);text-align:center;box-shadow:0 25px 90px #000a}.draw-card h2{margin:0 0 8px;font-size:clamp(1.5rem,5vw,2.4rem)}.draw-card p{color:#c4e6dd}.draw-digits{display:flex;justify-content:center;align-items:center;gap:14px;margin:28px 0}.draw-digit{display:grid;place-items:center;width:clamp(95px,25vw,150px);height:clamp(110px,29vw,170px);border-radius:20px;background:#e8fff2;color:#07564e;font-weight:900;font-size:clamp(4rem,15vw,7rem);box-shadow:inset 0 -10px 0 #9bd9b7,0 8px 25px #0006;font-variant-numeric:tabular-nums}.draw-digit.stopped{background:#fce4a1;color:#4d4a1d}.draw-card .primary{min-width:160px}.draw-card button:disabled{opacity:.5;cursor:default}@media(max-width:650px){.board{grid-template-columns:23px repeat(6,minmax(0,1fr));gap:4px;padding:7px;border-radius:14px}.envelope{min-height:75px;border-radius:8px}.env-art{transform:none}.env-caption{font-size:.73rem}.axis{font-size:1rem}.stats{margin:14px 0}.subtitle{font-size:.88rem}}
 </style><link rel="manifest" href="./manifest.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Envelopes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><style>
 .install-area{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:0 0 18px}.install-note{width:100%;text-align:center;font-size:.8rem;color:#c4e6dd}.install-area button{min-width:170px}
+</style><style>
+/* Respostas em coluna, sem sobreposicao, em celulares e projetores */
+.answers{display:flex!important;flex-direction:column!important;grid-template-columns:none!important;gap:12px!important;width:100%;max-width:100%}
+.answer{display:flex!important;width:100%;min-width:0;min-height:62px;align-items:center;gap:14px;text-align:left;white-space:normal;overflow-wrap:anywhere;word-break:normal;line-height:1.45}
+.answer .letter-key{flex:0 0 36px}
+.answer span:last-child{display:block;min-width:0;flex:1}
+.letter h2{overflow-wrap:anywhere}
+.quiz-layout{width:100%;min-width:0}
+@media(max-width:650px){.answer{padding:12px;min-height:58px}.answers{gap:9px!important}}
 </style></head>
 <body>
 <div id="drawModal" class="draw-modal hidden" role="dialog" aria-modal="true" aria-label="Sorteio de envelope"><div class="draw-card"><h2>🎲 SORTEIO SURPRESA</h2><p id="drawMessage">Preparando o sorteio...</p><div class="draw-digits"><div class="draw-digit" id="rollingLetter">A</div><div class="draw-digit" id="rollingNumber">1</div></div><button id="drawModalOpen" class="primary hidden" type="button">Abrir envelope</button> <button id="drawModalClose" class="secondary hidden" type="button">Voltar ao quadro</button></div></div><div class="app">
@@ -157,7 +166,7 @@ body{background:linear-gradient(180deg,rgba(2,21,34,.76),rgba(2,24,35,.86)),url(
         </article>
         <div class="answers" id="answers"></div>
         <div id="feedback" class="feedback hidden" role="status"></div>
-        <div class="actions"><button class="primary hidden" id="backButton" type="button">← Voltar ao quadro</button></div>
+        <div class="actions"><button class="primary hidden" id="backButton" type="button">← Voltar ao quadro</button><button class="secondary hidden" id="nextQuestionButton" type="button">Próxima pergunta →</button></div>
       </div>
     </section>
 
@@ -558,6 +567,7 @@ const questionText = document.getElementById("questionText");
 const answersEl = document.getElementById("answers");
 const feedback = document.getElementById("feedback");
 const backButton = document.getElementById("backButton");
+const nextQuestionButton = document.getElementById("nextQuestionButton");
 
 const STORAGE_KEY = "jogo_envelopes_energia_v2";
 function loadProgress(){try{const v=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");if(v&&Array.isArray(v.completed))return v;}catch(e){}return null;}
@@ -687,7 +697,10 @@ function answerQuestion(selectedIndex) {
    drawnIndex=null;openDrawButton.classList.add("hidden");drawResult.textContent="Escolha no quadro ou faça um sorteio!";
   updateStats();
   backButton.classList.remove("hidden");
+  if(completed.size<questions.length)nextQuestionButton.classList.remove("hidden");
 }
+
+nextQuestionButton.addEventListener("click",()=>{const remaining=questions.map((_,i)=>i).filter(i=>!completed.has(i));if(!remaining.length){showResults();return;}openEnvelope(remaining[Math.floor(Math.random()*remaining.length)]);});
 
 backButton.addEventListener("click", () => {
   if (completed.size === questions.length) {
